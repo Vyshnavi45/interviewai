@@ -37,7 +37,7 @@ const Signup = () => {
     try {
       // Call signup API
       const response = await axios.post(
-        "http://localhost:5000/api/auth/signup",
+        "https://interviewai-backend-x3r5.onrender.com/api/auth/signup",
         formData
       );
 

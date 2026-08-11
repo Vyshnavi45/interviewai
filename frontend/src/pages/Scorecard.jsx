@@ -33,8 +33,8 @@ const Scorecard = () => {
     try {
       const endpoint =
         feature === "HR"
-          ? `http://localhost:5000/api/hr/session/${sessionId}`
-          : `http://localhost:5000/api/cs/session/${sessionId}`;
+          ? `https://interviewai-backend-x3r5.onrender.com/api/hr/session/${sessionId}`
+          : `https://interviewai-backend-x3r5.onrender.com/api/cs/session/${sessionId}`;
 
       const res = await axios.get(endpoint, config);
       setSession(res.data.session);

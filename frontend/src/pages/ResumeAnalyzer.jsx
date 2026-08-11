@@ -20,7 +20,7 @@ const ResumeAnalyzer = () => {
   const fetchResume = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/resume/get",
+        "https://interviewai-backend-x3r5.onrender.com/api/resume/get",
         config
       );
       setResume(res.data.resume);
@@ -45,7 +45,7 @@ const ResumeAnalyzer = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/resume/analyze",
+        "https://interviewai-backend-x3r5.onrender.com/api/resume/analyze",
         { jobDescription },
         config
       );

@@ -211,7 +211,7 @@ const TestPage = () => {
     setLoadingMessage("Evaluating your answers...");
 
     try {
-      const endpoint = `http://localhost:5000/api/${
+      const endpoint = `https://interviewai-backend-x3r5.onrender.com/api/${
         feature === "HR" ? "hr" : "cs"
       }/submit-session`;
 

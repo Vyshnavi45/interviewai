@@ -54,7 +54,7 @@ const CSSetup = () => {
     try {
       // Generate questions
       const res = await axios.post(
-        "http://localhost:5000/api/cs/generate-questions",
+        "https://interviewai-backend-x3r5.onrender.com/api/cs/generate-questions",
         { topic: selectedTopic },
         config
       );
@@ -67,7 +67,7 @@ const CSSetup = () => {
         console.log("Getting AI times...");
         const timePromises = questions.map((q) =>
           axios.post(
-            "http://localhost:5000/api/cs/get-time",
+            "https://interviewai-backend-x3r5.onrender.com/api/cs/get-time",
             { question: q },
             config
           )

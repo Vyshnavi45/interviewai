@@ -35,7 +35,7 @@ const Dashboard = () => {
   const fetchResume = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/resume/get",
+        "https://interviewai-backend-x3r5.onrender.com/api/resume/get",
         config
       );
       setResume(response.data.resume);
@@ -65,7 +65,7 @@ const Dashboard = () => {
       formData.append("resume", file);
 
       const response = await axios.post(
-        "http://localhost:5000/api/resume/upload",
+        "https://interviewai-backend-x3r5.onrender.com/api/resume/upload",
         formData,
         {
           headers: {

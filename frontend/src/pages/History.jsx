@@ -28,11 +28,11 @@ const History = () => {
 
       const [hrRes, csRes] = await Promise.all([
         axios.get(
-          "http://localhost:5000/api/history/hr",
+          "https://interviewai-backend-x3r5.onrender.com/api/history/hr",
           config
         ),
         axios.get(
-          "http://localhost:5000/api/history/cs",
+          "https://interviewai-backend-x3r5.onrender.com/api/history/cs",
           config
         ),
       ]);

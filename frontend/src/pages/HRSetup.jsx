@@ -22,7 +22,7 @@ const HRSetup = () => {
   const fetchResume = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/resume/get",
+        "https://interviewai-backend-x3r5.onrender.com/api/resume/get",
         config
       );
       setResume(res.data.resume);
@@ -43,7 +43,7 @@ const HRSetup = () => {
     try {
       // Generate questions
       const res = await axios.post(
-        "http://localhost:5000/api/hr/generate-questions",
+        "https://interviewai-backend-x3r5.onrender.com/api/hr/generate-questions",
         {},
         config
       );
