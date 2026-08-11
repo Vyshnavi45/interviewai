@@ -1,135 +1,170 @@
 import React, { useEffect, useRef, useState } from "react";
 
 const VoiceRecorder = ({
-  isRecording,
-  onTextUpdate,
-  onFinalText,
-  onStop,
+isRecording,
+onTextUpdate,
+onFinalText,
+onStop,
 }) => {
 
-  const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState("");
-  const [isListening, setIsListening] = useState(false);
+const [transcript, setTranscript] = useState("");
+const [error, setError] = useState("");
+const [isListening, setIsListening] = useState(false);
 
-  const recognitionRef = useRef(null);
+const recognitionRef = useRef(null);
 
-  const transcriptRef = useRef("");
-  const restartTimeoutRef = useRef(null);
+const transcriptRef = useRef("");
+const restartTimeoutRef = useRef(null);
 
-  const isRecordingRef = useRef(false);
-  const shouldStopRef = useRef(false);
-  const isStartingRef = useRef(false);
+const isRecordingRef = useRef(false);
+const shouldStopRef = useRef(false);
+const isStartingRef = useRef(false);
 
-  useEffect(() => {
+useEffect(() => {
 
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-      setError("Speech Recognition is not supported in this browser.");
-      return;
+if (!SpeechRecognition) {
+  setError("Speech Recognition is not supported in this browser.");
+  return;
+}
+
+const recognition = new SpeechRecognition();
+
+recognition.continuous = true;
+recognition.interimResults = true;
+recognition.lang = "en-IN";
+recognition.maxAlternatives = 1;
+
+recognition.onstart = () => {
+  console.log("Recognition Started");
+  isStartingRef.current = false;
+  setIsListening(true);
+};
+
+recognition.onresult = (event) => {
+
+  let finalTranscript = "";
+  let interimTranscript = "";
+
+  for (
+    let i = event.resultIndex;
+    i < event.results.length;
+    i++
+  ) {
+
+    const text = event.results[i][0].transcript;
+
+    if (event.results[i].isFinal) {
+      finalTranscript += text + " ";
+    } else {
+      interimTranscript += text;
     }
+  }
 
-    const recognition = new SpeechRecognition();
+  if (finalTranscript) {
+    transcriptRef.current += finalTranscript;
+  }
 
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    recognition.maxAlternatives = 1;
+  const full =
+    transcriptRef.current + interimTranscript;
 
-    recognition.onstart = () => {
-      console.log("Recognition Started");
-      isStartingRef.current = false;
-      setIsListening(true);
-    };
+  setTranscript(full);
 
-    recognition.onresult = (event) => {
+  if (onTextUpdate) {
+    onTextUpdate(full);
+  }
+};
 
-      let finalTranscript = "";
-      let interimTranscript = "";
+recognition.onerror = (event) => {
 
-      for (
-        let i = event.resultIndex;
-        i < event.results.length;
-        i++
-      ) {
+  console.log("Speech Error:", event.error);
 
-        const text = event.results[i][0].transcript;
+  if (event.error === "not-allowed") {
+    setError("Microphone permission denied.");
+    return;
+  }
 
-        if (event.results[i].isFinal) {
-          finalTranscript += text + " ";
-        } else {
-          interimTranscript += text;
-        }
-      }
+  if (event.error === "network") {
+    console.log("Network error - preparing recognition restart.");
 
-      if (finalTranscript) {
-        transcriptRef.current += finalTranscript;
-      }
+    isStartingRef.current = false;
+    setIsListening(false);
 
-      const full =
-        transcriptRef.current + interimTranscript;
+    return;
+  }
 
-      setTranscript(full);
+  if (
+    event.error === "aborted" ||
+    event.error === "no-speech" ||
+    event.error === "audio-capture"
+  ) {
+    return;
+  }
+};
 
-      if (onTextUpdate) {
-        onTextUpdate(full);
-      }
-    };
+recognition.onend = () => {
 
-    recognition.onerror = (event) => {
+  console.log("Recognition Ended");
 
-      console.log("Speech Error:", event.error);
+  setIsListening(false);
+  isStartingRef.current = false;
 
-      if (event.error === "not-allowed") {
-        setError("Microphone permission denied.");
-        return;
-      }
+  if (shouldStopRef.current) {
+
+    const finalText = transcriptRef.current.trim();
+
+    if (onFinalText)
+      onFinalText(finalText);
+
+    if (onStop)
+      onStop(finalText);
+
+    return;
+  }
+
+  if (isRecordingRef.current) {
+
+    clearTimeout(restartTimeoutRef.current);
+
+    restartTimeoutRef.current = setTimeout(() => {
 
       if (
-        event.error === "aborted" ||
-        event.error === "no-speech" ||
-        event.error === "audio-capture"
+        !isRecordingRef.current ||
+        shouldStopRef.current
       ) {
         return;
       }
-    };
 
-    recognition.onend = () => {
-
-      console.log("Recognition Ended");
-
-      setIsListening(false);
-      isStartingRef.current = false;
-
-      if (shouldStopRef.current) {
-
-        const finalText = transcriptRef.current.trim();
-
-        if (onFinalText)
-          onFinalText(finalText);
-
-        if (onStop)
-          onStop(finalText);
-
+      if (isStartingRef.current) {
         return;
       }
 
-      if (isRecordingRef.current) {
+      try {
 
-        clearTimeout(restartTimeoutRef.current);
+        isStartingRef.current = true;
 
+        recognition.start();
+
+      } catch (err) {
+
+        isStartingRef.current = false;
+
+        console.log("Restart attempt failed:", err.message);
+
+        // Try again after the browser has had more time
+        // to release the previous recognition session.
         restartTimeoutRef.current = setTimeout(() => {
 
           if (
             !isRecordingRef.current ||
-            shouldStopRef.current
-          )
+            shouldStopRef.current ||
+            isStartingRef.current
+          ) {
             return;
-
-          if (isStartingRef.current)
-            return;
+          }
 
           try {
 
@@ -137,11 +172,14 @@ const VoiceRecorder = ({
 
             recognition.start();
 
-          } catch (err) {
+          } catch (retryErr) {
 
             isStartingRef.current = false;
 
-            console.log("Restart:", err.message);
+            console.log(
+              "Second restart attempt failed:",
+              retryErr.message
+            );
 
           }
 
@@ -149,200 +187,207 @@ const VoiceRecorder = ({
 
       }
 
-    };
+    }, 100);
 
-    recognitionRef.current = recognition;
+  }
 
-    return () => {
+};
+recognitionRef.current = recognition;
 
-      clearTimeout(restartTimeoutRef.current);
+return () => {
 
-      try {
-        recognition.stop();
-      } catch {}
+  clearTimeout(restartTimeoutRef.current);
 
-    };
+  try {
+    recognition.stop();
+  } catch {}
 
-  }, []);
-    useEffect(() => {
+};
 
-    if (!recognitionRef.current) return;
 
-    if (isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
-    }
+}, []);
+useEffect(() => {
 
-  }, [isRecording]);
+if (!recognitionRef.current) return;
+if (isRecording) {
+  startRecording();
+} else {
+  stopRecording();
+}
 
-  const startRecording = () => {
 
-    console.log("Starting Recording");
+}, [isRecording]);
 
-    clearTimeout(restartTimeoutRef.current);
+const startRecording = () => {
 
-    transcriptRef.current = "";
-    setTranscript("");
+console.log("Starting Recording");
 
-    shouldStopRef.current = false;
-    isRecordingRef.current = true;
+clearTimeout(restartTimeoutRef.current);
 
-    if (isListening || isStartingRef.current) return;
+transcriptRef.current = "";
+setTranscript("");
 
-    try {
+shouldStopRef.current = false;
+isRecordingRef.current = true;
 
-      isStartingRef.current = true;
+if (isListening || isStartingRef.current) return;
 
-      recognitionRef.current.start();
+try {
 
-    } catch (err) {
+  isStartingRef.current = true;
 
-      isStartingRef.current = false;
+  recognitionRef.current.start();
 
-      console.log(err.message);
+} catch (err) {
 
-    }
+  isStartingRef.current = false;
 
-  };
+  console.log(err.message);
 
-  const stopRecording = () => {
+}
 
-    console.log("Stopping Recording");
 
-    clearTimeout(restartTimeoutRef.current);
+};
 
-    shouldStopRef.current = true;
-    isRecordingRef.current = false;
+const stopRecording = () => {
 
-    if (!isListening) {
+console.log("Stopping Recording");
 
-      const finalText = transcriptRef.current.trim();
+clearTimeout(restartTimeoutRef.current);
 
-      if (onFinalText)
-        onFinalText(finalText);
+shouldStopRef.current = true;
+isRecordingRef.current = false;
 
-      if (onStop)
-        onStop(finalText);
+if (!isListening) {
 
-      return;
+  const finalText = transcriptRef.current.trim();
 
-    }
+  if (onFinalText)
+    onFinalText(finalText);
 
-    try {
+  if (onStop)
+    onStop(finalText);
 
-      recognitionRef.current.stop();
+  return;
 
-    } catch (err) {
+}
 
-      console.log(err.message);
+try {
 
-    }
+  recognitionRef.current.stop();
 
-  };
+} catch (err) {
 
-  return (
+  console.log(err.message);
 
-    <div style={styles.container}>
+}
 
-      {error && (
-        <div style={styles.error}>
-          {error}
-        </div>
-      )}
 
-      <div style={styles.statusRow}>
+};
 
-        {isListening ? (
+return (
 
-          <div style={styles.recordingStatus}>
-            <div style={styles.dot}></div>
-            <span>Recording...</span>
-          </div>
+<div style={styles.container}>
 
-        ) : isRecording ? (
-
-          <div style={styles.restartingStatus}>
-            Restarting microphone...
-          </div>
-
-        ) : null}
-
-      </div>
-
-      <div style={styles.transcriptBox}>
-
-        {transcript ? transcript :
-
-          <span style={styles.placeholder}>
-
-            {isRecording
-              ? "Speak now..."
-              : "Transcript will appear here"}
-
-          </span>
-
-        }
-
-      </div>
-
+  {error && (
+    <div style={styles.error}>
+      {error}
     </div>
+  )}
 
-  );
+  <div style={styles.statusRow}>
+
+    {isListening ? (
+
+      <div style={styles.recordingStatus}>
+        <div style={styles.dot}></div>
+        <span>Recording...</span>
+      </div>
+
+    ) : isRecording ? (
+
+      <div style={styles.restartingStatus}>
+        Restarting microphone...
+      </div>
+
+    ) : null}
+
+  </div>
+
+  <div style={styles.transcriptBox}>
+
+    {transcript ? transcript :
+
+      <span style={styles.placeholder}>
+
+        {isRecording
+          ? "Speak now..."
+          : "Transcript will appear here"}
+
+      </span>
+
+    }
+
+  </div>
+
+</div>
+
+
+);
 
 };
 
 const styles = {
 
-  container: {
-    width: "100%",
-  },
+container: {
+width: "100%",
+},
 
-  error: {
-    backgroundColor: "#ffe0e0",
-    color: "#cc0000",
-    padding: "10px",
-    borderRadius: "8px",
-    marginBottom: "10px",
-  },
+error: {
+backgroundColor: "#ffe0e0",
+color: "#cc0000",
+padding: "10px",
+borderRadius: "8px",
+marginBottom: "10px",
+},
 
-  statusRow: {
-    minHeight: "24px",
-    marginBottom: "8px",
-  },
+statusRow: {
+minHeight: "24px",
+marginBottom: "8px",
+},
 
-  recordingStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    color: "#ef4444",
-    fontWeight: "600",
-  },
+recordingStatus: {
+display: "flex",
+alignItems: "center",
+gap: "8px",
+color: "#ef4444",
+fontWeight: "600",
+},
 
-  restartingStatus: {
-    color: "#f59e0b",
-    fontWeight: "600",
-  },
+restartingStatus: {
+color: "#f59e0b",
+fontWeight: "600",
+},
 
-  dot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    backgroundColor: "#ef4444",
-  },
+dot: {
+width: "10px",
+height: "10px",
+borderRadius: "50%",
+backgroundColor: "#ef4444",
+},
 
-  transcriptBox: {
-    minHeight: "140px",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    padding: "12px",
-    background: "#fafafa",
-    lineHeight: "1.6",
-  },
+transcriptBox: {
+minHeight: "140px",
+border: "1px solid #ddd",
+borderRadius: "8px",
+padding: "12px",
+background: "#fafafa",
+lineHeight: "1.6",
+},
 
-  placeholder: {
-    color: "#999",
-  }
+placeholder: {
+color: "#999",
+}
 
 };
 
